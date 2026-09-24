@@ -1,0 +1,13 @@
+# Local QA screenshots
+headless-*.png
+intro-*.png
+
+# Local duplicate/share copies; index.html is the repository entry
+DONG-窑变陶艺体验.html
+窑变陶艺体验 - 副本.html
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
