@@ -136,17 +136,15 @@
     function hideOnboarding(){onboarding.hidden=true;onboarding.setAttribute('aria-hidden','true');$$('.onboarding-set',onboarding).forEach(set=>set.classList.remove('active'));if(firingOverlay.hidden)document.body.style.overflow=''}
     function showOnboarding(mode){const key=`${mode}GuideSeen`;if(state[key])return;state[key]=true;$$('.onboarding-set',onboarding).forEach(set=>set.classList.toggle('active',set.dataset.onboarding===mode));onboarding.hidden=false;onboarding.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';requestAnimationFrame(positionOnboardingTargets)}
     function updatePaintGuide(){
-      const started=state.painted>0,isOrbit=state.tool==='orbit',brushName={small:'细刷',medium:'中刷',large:'大刷'}[state.brushSize],toolCopy=isOrbit?'旋转查看 · 在器物上拖动以旋转，切回刷釉即可继续':'刷釉模式 · 在器物表面按住并拖动';
-      $('#guideStep').textContent=isOrbit?'03':started?'02':'01';
-      $('#guideText').textContent=isOrbit?'按住器物左右拖动查看釉面，完成后切回刷釉':started?'换一种釉色继续叠刷，颜色会在烧制后自然融合':'先在右侧选择釉色和笔刷，再按住器物表面拖动';
-      $('#selectedGlazeLabel').textContent=state.glazeName;
-      $('#selectedBrushLabel').textContent=brushName;
-      $('#toolHint').textContent=toolCopy;
-      $('#paintViewTip').textContent=isOrbit?'查看模式 · 左右拖动旋转模型':'刷釉模式 · 按住并拖动留下釉层';
+      const started=state.painted>0,isOrbit=state.tool==='orbit',isErase=state.tool==='erase',brushName={small:'细刷',medium:'中刷',large:'大刷'}[state.brushSize];
+      const toolCopy=isOrbit?'旋转查看 · 左键或中键拖动模型，切回刷釉即可继续':isErase?'橡皮擦模式 · 左键擦除；右键也可临时擦除；中键旋转':'刷釉模式 · 左键轻刷叠色；右键临时擦除；中键旋转';
+      $('#guideStep').textContent=isOrbit?'03':isErase?'02':started?'02':'01';
+      $('#guideText').textContent=isOrbit?'按住器物左右拖动查看釉面，完成后切回刷釉':isErase?'在器物上轻刷擦除釉层，擦过几次会逐渐变干净':started?'换一种釉色继续叠刷，颜色会在烧制后自然融合':'先选颜色和笔刷，再在器物表面轻刷；多次经过会逐渐变浓';
+      $('#selectedGlazeLabel').textContent=state.glazeName;$('#selectedBrushLabel').textContent=brushName;$('#toolHint').textContent=toolCopy;
+      $('#paintViewTip').textContent=isOrbit?'查看模式 · 左键或中键拖动旋转模型':isErase?'橡皮擦模式 · 左键擦除 · 中键旋转':'左键刷釉 · 右键擦除 · 中键旋转';
       $('#customColorChip').style.background=customColor.value;
-      $('#paintHint').textContent=started?`已上釉 ${Math.round(state.painted)}% · 当前釉色：${state.glazeName}`:`当前釉色：${state.glazeName} · ${state.tool==='paint'?'在器物上试画一笔':'切回刷釉后开始绘制'}`;
-      $('#toResult').disabled=!started;
-      $('#toResult').textContent=started?'烧制并出窑 →':'先在器物上刷釉';
+      $('#paintHint').textContent=started?`已上釉 ${Math.round(state.painted)}% · 当前釉色：${state.glazeName}`:`当前釉色：${state.glazeName} · ${isErase?'在器物上擦除釉层':'轻刷一笔，叠刷后颜色会逐渐变浓'}`;
+      $('#toResult').disabled=!started;$('#toResult').textContent=started?'烧制并出窑 →':'先在器物上刷釉';
     }
     function go(n){hideOnboarding();state.step=n;app.classList.toggle('paint-mode',n===2);screens.forEach((s,i)=>s.classList.toggle('active',i===n-1));steps.forEach((s,i)=>s.classList.toggle('active',i===n-1));mobile.forEach((s,i)=>s.classList.toggle('active',i===n-1));$('#count').textContent=String(n).padStart(2,'0');if(n===2)updatePaintGuide();scrollTo({top:0,behavior:'smooth'})}
     function profile(form){
@@ -154,6 +152,16 @@
       if(form==='jar')return[[0,0],[.62,0],[.7,.1],[.72,.25],[.68,.38],[.82,.7],[.98,1.16],[1.02,1.48],[.94,1.78],[.72,2.08],[.54,2.18],[.48,2.3],[.55,2.38],[.54,2.5],[.42,2.56],[.33,2.52],[.33,2.34],[.43,2.29],[.34,2.17],[.31,2.0],[.45,1.7],[.58,1.35],[.58,.95],[.46,.55],[.26,.32],[0,.25]];
       return[[0,0],[.58,0],[.66,.1],[.66,.23],[.49,.3],[.4,.72],[.5,1.2],[.7,1.72],[.82,2.15],[.75,2.53],[.53,2.78],[.46,3.02],[.5,3.18],[.62,3.28],[.6,3.43],[.4,3.5],[.31,3.47],[.31,3.28],[.43,3.22],[.36,3.08],[.34,2.82],[.42,2.48],[.55,2.1],[.57,1.72],[.49,1.25],[.37,.8],[.27,.42],[0,.28]]
     }
+    function ensurePaintControls(){
+      const tip=$('#paintViewTip'),guide=$('#guideText');
+      if(tip)tip.textContent='左键刷釉 · 右键擦除 · 中键旋转';
+      if(guide)guide.textContent='先选颜色和笔刷，再在器物表面轻刷；多次经过会逐渐变浓';
+      const toolSwitch=$('.tool-switch');
+      if(toolSwitch&&!toolSwitch.querySelector('[data-tool="erase"]')){const orbit=toolSwitch.querySelector('[data-tool="orbit"]'),button=document.createElement('button');button.dataset.tool='erase';button.setAttribute('aria-pressed','false');button.textContent='⌫ 橡皮擦';toolSwitch.insertBefore(button,orbit)}
+      const small=$('.brush[data-size="small"] small'),medium=$('.brush[data-size="medium"] small'),large=$('.brush[data-size="large"] small');
+      if(small)small.textContent='淡入细节';if(medium)medium.textContent='均匀铺色';if(large)large.textContent='柔和晕染';
+    }
+    ensurePaintControls();
     const SIZE=1024;
     const newCanvas=()=>{const canvas=document.createElement('canvas');canvas.width=canvas.height=SIZE;return canvas};
     const tuneTexture=texture=>{texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=THREE.ClampToEdgeWrapping;texture.wrapT=THREE.ClampToEdgeWrapping;texture.generateMipmaps=false;texture.minFilter=THREE.LinearFilter;texture.magFilter=THREE.LinearFilter;texture.anisotropy=8;return texture};
@@ -215,6 +223,7 @@
       const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,premultipliedAlpha:false,powerPreference:'high-performance'});const gl=renderer.getContext();gl.disable(gl.DITHER);renderer.setClearColor(0xf7f5ee,0);renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,3));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.88;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
       const pmrem=new THREE.PMREMGenerator(renderer),room=new RoomEnvironment(renderer);scene.environment=pmrem.fromScene(room,.045).texture;room.dispose();pmrem.dispose();el.appendChild(renderer.domElement);
       const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.07;controls.enablePan=false;controls.minDistance=3.6;controls.maxDistance=9;controls.target.set(0,1.7,0);
+      controls.mouseButtons.LEFT=THREE.MOUSE.ROTATE;controls.mouseButtons.MIDDLE=THREE.MOUSE.ROTATE;controls.mouseButtons.RIGHT=THREE.MOUSE.ROTATE;
       scene.add(new THREE.HemisphereLight(0xfffdf2,0x758b81,1.35));
       addStudioLight(scene,0xfff7e8,3.65,4.8,6.2,[-3.6,4.8,4.8],[0,1.45,0]);
       addStudioLight(scene,0xdaf2eb,2.35,3.4,5.2,[3.8,2.4,3.2],[0,1.4,0]);
@@ -231,15 +240,21 @@
     function replaceVessel(world,form){if(world.mesh){world.scene.remove(world.mesh);world.mesh.geometry.dispose();world.mesh.material.dispose()}addVesselWorld(world,form,world.texture||paintTex)}
     function initSelect(){select3d=baseScene($('#selectView'));addVesselWorld(select3d,state.form,makeTexture())}
     function enablePaint(world){
-      const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let down=false,last=null;
+      const ray=new THREE.Raycaster(),mouse=new THREE.Vector2(),canvas=world.renderer.domElement;let down=false,last=null,action='paint';
       const hitAt=e=>{const r=world.renderer.domElement.getBoundingClientRect();mouse.x=((e.clientX-r.left)/r.width)*2-1;mouse.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(mouse,world.camera);return ray.intersectObject(world.mesh)[0]};
-      const stamp=hit=>{if(!hit||!hit.uv)return;const u=(hit.uv.x+1)%1,v=1-hit.uv.y;if(!state.usedGlazes.includes(state.glaze))state.usedGlazes.push(state.glaze);const size=state.brushSize==='small'?16:state.brushSize==='large'?70:42,cx=u*SIZE,cy=v*SIZE,w=paintTex.wetCtx,col=palette[state.glaze].rgba;
-        const paintAt=px=>{const halo=w.createRadialGradient(px,cy,0,px,cy,size*1.08);halo.addColorStop(0,`rgba(${col[0]},${col[1]},${col[2]},.12)`);halo.addColorStop(.78,`rgba(${col[0]},${col[1]},${col[2]},.08)`);halo.addColorStop(1,`rgba(${col[0]},${col[1]},${col[2]},0)`);w.fillStyle=halo;w.beginPath();w.arc(px,cy,size*1.08,0,Math.PI*2);w.fill();const core=w.createRadialGradient(px-size*.12,cy-size*.12,0,px,cy,size);core.addColorStop(0,`rgba(${Math.min(255,col[0]+18)},${Math.min(255,col[1]+18)},${Math.min(255,col[2]+18)},.78)`);core.addColorStop(.58,`rgba(${col[0]},${col[1]},${col[2]},.72)`);core.addColorStop(.84,`rgba(${col[0]},${col[1]},${col[2]},.5)`);core.addColorStop(1,`rgba(${col[0]},${col[1]},${col[2]},.04)`);w.fillStyle=core;w.beginPath();w.arc(px,cy,size,0,Math.PI*2);w.fill()};
+      const stamp=hit=>{if(!hit||!hit.uv)return;const u=(hit.uv.x+1)%1,v=1-hit.uv.y,size=state.brushSize==='small'?14:state.brushSize==='large'?58:34,cx=u*SIZE,cy=v*SIZE,w=paintTex.wetCtx,col=palette[state.glaze].rgba;
+        if(action==='paint'&&!state.usedGlazes.includes(state.glaze))state.usedGlazes.push(state.glaze);
+        const paintAt=px=>{w.save();if(action==='erase'){w.globalCompositeOperation='destination-out';const eraser=w.createRadialGradient(px,cy,0,px,cy,size*1.18);eraser.addColorStop(0,'rgba(0,0,0,.42)');eraser.addColorStop(.64,'rgba(0,0,0,.25)');eraser.addColorStop(1,'rgba(0,0,0,0)');w.fillStyle=eraser;w.beginPath();w.arc(px,cy,size*1.18,0,Math.PI*2);w.fill()}else{w.globalCompositeOperation='source-over';const wash=w.createRadialGradient(px-size*.16,cy-size*.14,0,px,cy,size);wash.addColorStop(0,`rgba(${Math.min(255,col[0]+22)},${Math.min(255,col[1]+22)},${Math.min(255,col[2]+22)},.2)`);wash.addColorStop(.46,`rgba(${col[0]},${col[1]},${col[2]},.16)`);wash.addColorStop(.78,`rgba(${col[0]},${col[1]},${col[2]},.1)`);wash.addColorStop(1,`rgba(${col[0]},${col[1]},${col[2]},0)`);w.fillStyle=wash;w.beginPath();w.arc(px,cy,size,0,Math.PI*2);w.fill()}w.restore()};
         paintAt(cx);if(cx<size*1.1)paintAt(cx+SIZE);if(cx>SIZE-size*1.1)paintAt(cx-SIZE);
-        state.painted=Math.min(100,state.painted+.52);renderTextureLayer(paintTex);updatePaintGuide();return{u,v}
+        state.painted=Math.max(0,Math.min(100,state.painted+(action==='erase'?-.16:.18)));renderTextureLayer(paintTex);updatePaintGuide();return{u,v}
       };
       const point=e=>{const hit=hitAt(e);if(!hit||!hit.uv)return;const p={u:(hit.uv.x+1)%1,v:1-hit.uv.y};if(last){let du=p.u-last.u;if(du>.5)du-=1;if(du<-.5)du+=1;const d=Math.hypot(du,p.v-last.v),steps=Math.max(1,Math.ceil(d/.012));for(let i=1;i<=steps;i++){const t=i/steps,u=(last.u+du*t+1)%1;stamp({uv:new THREE.Vector2(u,1-(last.v+(p.v-last.v)*t))})}}else stamp(hit);last=p};
-      world.renderer.domElement.addEventListener('pointerdown',e=>{down=true;last=null;if(state.tool==='paint'){world.controls.enabled=false;point(e)}});world.renderer.domElement.addEventListener('pointermove',e=>{if(down&&state.tool==='paint')point(e)});window.addEventListener('pointerup',()=>{down=false;last=null;world.controls.enabled=state.tool==='orbit'})
+      canvas.addEventListener('pointerdown',e=>{if(e.button===1)world.controls.enabled=true},true);
+      canvas.addEventListener('contextmenu',e=>e.preventDefault());
+      canvas.addEventListener('pointerdown',e=>{if(e.button===1){down=false;last=null;world.controls.enabled=true;return}if(e.button!==0&&e.button!==2)return;action=e.button===2||state.tool==='erase'?'erase':'paint';if(state.tool==='orbit'&&e.button===0){world.controls.enabled=true;return}down=true;last=null;world.controls.enabled=false;canvas.setPointerCapture?.(e.pointerId);point(e);e.preventDefault()});
+      canvas.addEventListener('pointermove',e=>{if(down)point(e)});
+      window.addEventListener('pointerup',()=>{down=false;last=null;world.controls.enabled=state.tool==='orbit'});
+      window.addEventListener('pointercancel',()=>{down=false;last=null;world.controls.enabled=state.tool==='orbit'})
     }
     function initPaint(){paint3d=baseScene($('#paintView'));paintTex=makeTexture();addVesselWorld(paint3d,state.form,paintTex);paint3d.controls.enabled=false;enablePaint(paint3d)}
     function makeFiredTexture(){
@@ -270,9 +285,12 @@
       const pearl=x.createLinearGradient(0,0,SIZE,0);pearl.addColorStop(0,'rgba(255,255,255,.02)');pearl.addColorStop(.18,'rgba(255,250,235,.18)');pearl.addColorStop(.38,'rgba(255,255,255,.04)');pearl.addColorStop(.72,'rgba(216,242,234,.13)');pearl.addColorStop(1,'rgba(255,255,255,.02)');x.fillStyle=pearl;x.fillRect(0,0,SIZE,SIZE);
       let seed=(state.form.charCodeAt(0)+state.fire.charCodeAt(0)+Math.round(state.painted)*31)>>>0;const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
       const count=Math.round((state.cooling==='缓冷'?28:8)+state.painted*(state.cooling==='缓冷'?1.35:.35)+(glazeCodes.includes('change')&&state.cooling==='缓冷'?100:0)+(state.fire==='柴烧'?75:0));
-      x.save();x.filter='blur(2.4px)';
-      for(let i=0;i<count;i++){const px=rand()*SIZE,py=SIZE*(.2+rand()*.76),r=2.5+rand()*(state.painted>55?12:7),alpha=state.fire==='柴烧'?.05+rand()*.13:.045+rand()*.12,spot=x.createRadialGradient(px,py,0,px,py,r);if(state.fire==='柴烧'){spot.addColorStop(0,`rgba(119,82,54,${alpha})`);spot.addColorStop(.55,`rgba(164,116,77,${alpha*.6})`)}else{spot.addColorStop(0,`rgba(250,247,225,${alpha})`);spot.addColorStop(.55,`rgba(225,237,216,${alpha*.58})`)}spot.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=spot;x.beginPath();x.ellipse(px,py,r,r*(.55+rand()*.75),rand()*Math.PI,0,Math.PI*2);x.fill()}
+      x.save();x.filter='blur(1.15px)';
+      for(let i=0;i<count;i++){const px=rand()*SIZE,py=SIZE*(.2+rand()*.76),r=2.5+rand()*(state.painted>55?12:7),alpha=state.fire==='柴烧'?.05+rand()*.13:.045+rand()*.12,spot=x.createRadialGradient(px,py,0,px,py,r);if(state.fire==='柴烧'){spot.addColorStop(0,`rgba(119,82,54,${alpha})`);spot.addColorStop(.55,`rgba(164,116,77,${alpha*.6})`)}else{spot.addColorStop(0,`rgba(250,247,225,${alpha})`);spot.addColorStop(.42,`rgba(225,237,216,${alpha*.72})`);spot.addColorStop(.7,`rgba(173,208,197,${alpha*.28})`)}spot.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=spot;x.beginPath();x.ellipse(px,py,r,r*(.55+rand()*.75),rand()*Math.PI,0,Math.PI*2);x.fill()}
       x.restore();
+      const crystalCount=Math.round((state.cooling==='缓冷'?32:11)+(state.painted*.65)+(glazeCodes.includes('change')?70:0));x.save();x.globalCompositeOperation='screen';x.filter='blur(.25px)';
+      for(let i=0;i<crystalCount;i++){const px=rand()*SIZE,py=SIZE*(.16+rand()*.8),r=1.5+rand()*5.5,alpha=.035+rand()*.12;const crystal=x.createRadialGradient(px-r*.28,py-r*.35,0,px,py,r*2.8);crystal.addColorStop(0,`rgba(255,250,226,${alpha+.1})`);crystal.addColorStop(.24,`rgba(205,239,224,${alpha})`);crystal.addColorStop(.58,`rgba(255,255,255,${alpha*.42})`);crystal.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=crystal;x.beginPath();x.moveTo(px,py-r*1.4);x.lineTo(px+r*.7,py-r*.2);x.lineTo(px+r*.55,py+r*1.1);x.lineTo(px-r*.6,py+r*1.25);x.lineTo(px-r*.8,py-r*.35);x.closePath();x.fill()}x.restore();
+      const highlight=x.createLinearGradient(0,0,SIZE,0);highlight.addColorStop(0,'rgba(255,255,255,0)');highlight.addColorStop(.28,'rgba(255,255,255,.2)');highlight.addColorStop(.36,'rgba(255,255,255,.03)');highlight.addColorStop(.56,'rgba(255,252,240,.16)');highlight.addColorStop(.66,'rgba(255,255,255,.03)');highlight.addColorStop(1,'rgba(255,255,255,0)');x.globalCompositeOperation='screen';x.fillStyle=highlight;x.fillRect(0,0,SIZE,SIZE);x.globalCompositeOperation='source-over';
       softenTextureSeam(c);sealTextureEdges(c);const tex=tuneTexture(new THREE.CanvasTexture(c));return{canvas:c,ctx:x,texture:tex}
     }
     function initResult(){firedTex=makeFiredTexture();result3d=baseScene($('#resultView'));addVesselWorld(result3d,state.form,firedTex);result3d.mesh.material.roughness=state.cooling==='快冷'?.12:.18;result3d.mesh.material.clearcoat=state.cooling==='快冷'?.96:.9;result3d.mesh.material.clearcoatRoughness=state.cooling==='快冷'?.055:.1;result3d.mesh.material.envMapIntensity=1.38}
